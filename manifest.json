@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FB Group Listings",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Transform Facebook group posts into structured, filterable listings using AI.",
   "permissions": [
     "storage",
@@ -22,6 +22,12 @@
       "js": ["content.js"],
       "css": ["sidebar.css"],
       "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["sidebar.html", "sidebar.js"],
+      "matches": ["https://www.facebook.com/*"]
     }
   ],
   "options_ui": {
