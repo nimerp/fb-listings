@@ -1,10 +1,13 @@
-/* Host element — just keeps it out of the page flow.
-   All sidebar styles are injected inside the Shadow DOM by content.js */
+/* Host element — sized and positioned to match the sidebar.
+   pointer-events: auto is critical; "none" blocks all shadow DOM clicks. */
 #fb-listings-root {
   all: initial;
+  display: block;
   position: fixed;
-  top: 0;
+  top: 60px;
   right: 0;
+  width: 340px;
+  max-height: calc(100vh - 70px);
   z-index: 2147483647;
-  pointer-events: none;
+  pointer-events: auto;
 }

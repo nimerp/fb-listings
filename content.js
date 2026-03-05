@@ -11,19 +11,15 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :host {
-      all: initial;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       font-size: 13px;
       color: #1c1e21;
     }
 
+    /* Host is already positioned fixed by sidebar.css — #fbl-sidebar just fills it */
     #fbl-sidebar {
-      position: fixed;
-      top: 60px;
-      right: 0;
-      z-index: 2147483647;
-      width: 340px;
-      max-height: calc(100vh - 70px);
+      width: 100%;
+      height: 100%;
       display: flex;
       flex-direction: column;
       background: #ffffff;
@@ -551,6 +547,9 @@
       body.style.display = collapsed ? "none" : "";
       btn.textContent = collapsed ? "›" : "‹";
       sidebar.classList.toggle("fbl-collapsed", collapsed);
+      // Also resize the host so the hit-test area matches the visible area
+      const host = document.getElementById(SIDEBAR_ID);
+      if (host) host.style.width = collapsed ? "36px" : "340px";
     });
   }
 
