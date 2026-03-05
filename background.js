@@ -2,6 +2,25 @@ const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_MODEL = "gpt-4o";
 const BATCH_SIZE = 10;
 
+// ─── SPA navigation handler ───────────────────────────────────────────────────
+// Facebook is a SPA — URL changes via pushState/replaceState don't trigger
+// content script re-injection. We detect those navigations here and inject
+// the content script + CSS manually whenever the tab lands on a group page.
+const GROUP_URL_PATTERN = /facebook\.com\/groups\/[^/]+/;
+
+chrome.webNavigation.onHistoryStateUpdated.addListener(
+  async ({ tabId, url }) => {
+    if (!GROUP_URL_PATTERN.test(url)) return;
+    try {
+      await chrome.scripting.insertCSS({ target: { tabId }, files: ["sidebar.css"] });
+      await chrome.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
+    } catch {
+      // Tab may have navigated away already — safe to ignore
+    }
+  },
+  { url: [{ hostEquals: "www.facebook.com" }] }
+);
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "PROCESS_POSTS") {
     handleProcessPosts(message.payload)

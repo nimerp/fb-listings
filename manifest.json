@@ -5,7 +5,9 @@
   "description": "Transform Facebook group posts into structured, filterable listings using AI.",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "webNavigation",
+    "scripting"
   ],
   "host_permissions": [
     "https://www.facebook.com/*",
