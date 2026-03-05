@@ -29,8 +29,8 @@ saveBtn.addEventListener("click", () => {
     showStatus("Please enter a valid API key.", "error");
     return;
   }
-  if (!key.startsWith("sk-ant-")) {
-    showStatus("That doesn't look like an Anthropic API key (should start with sk-ant-).", "error");
+  if (!key.startsWith("sk-")) {
+    showStatus("That doesn't look like an OpenAI API key (should start with sk-).", "error");
     return;
   }
   chrome.storage.sync.set({ apiKey: key }, () => {

@@ -1,5 +1,5 @@
-const CLAUDE_API_URL = "https://api.anthropic.com/v1/messages";
-const CLAUDE_MODEL = "claude-sonnet-4-6";
+const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+const OPENAI_MODEL = "gpt-4o";
 const BATCH_SIZE = 10;
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -62,37 +62,44 @@ INSTRUCTIONS:
    e. Create a concise SUMMARY description (1-2 sentences).
    f. Include the provided POST LINK in the output.
 
-OUTPUT FORMAT (respond with ONLY a valid JSON array, no markdown, no explanation):
-[
-  {
-    "type": "offer",
-    "listing_type": "Auto-detected from context",
-    "title": "Short descriptive title",
-    "fields": {
-      "field_name": "value"
-    },
-    "description": "Concise summary of the post",
-    "link": "https://facebook.com/..."
-  }
-]
+OUTPUT FORMAT (respond with ONLY a valid JSON object containing a "listings" array, no markdown, no explanation):
+{
+  "listings": [
+    {
+      "type": "offer",
+      "listing_type": "Auto-detected from context",
+      "title": "Short descriptive title",
+      "fields": {
+        "field_name": "value"
+      },
+      "description": "Concise summary of the post",
+      "link": "https://facebook.com/..."
+    }
+  ]
+}
 
-If no posts are relevant, respond with an empty array: []
+If no posts are relevant, respond with: {"listings": []}
 
 POSTS TO PROCESS:
 ${postsText}`;
 
-  const response = await fetch(CLAUDE_API_URL, {
+  const response = await fetch(OPENAI_API_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
+      "Authorization": `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: CLAUDE_MODEL,
+      model: OPENAI_MODEL,
       max_tokens: 4096,
-      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: "You are a structured data extractor. Always respond with valid JSON only.",
+        },
+        { role: "user", content: prompt },
+      ],
     }),
   });
 
@@ -102,11 +109,14 @@ ${postsText}`;
   }
 
   const data = await response.json();
-  const rawText = data.content?.[0]?.text || "[]";
+  const rawText = data.choices?.[0]?.message?.content || "[]";
 
   try {
     const parsed = JSON.parse(rawText);
-    return Array.isArray(parsed) ? parsed : [];
+    // OpenAI json_object mode may wrap array in {listings: [...]} or similar
+    if (Array.isArray(parsed)) return parsed;
+    const firstArray = Object.values(parsed).find(Array.isArray);
+    return firstArray || [];
   } catch {
     // Try to extract JSON array from response if model included extra text
     const match = rawText.match(/\[[\s\S]*\]/);

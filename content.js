@@ -343,7 +343,7 @@
 
         if (!response.success) {
           if (response.error === "NO_API_KEY") {
-            setStatus("No API key set. Click ⚙ to add your Anthropic API key.", "error");
+            setStatus("No API key set. Click ⚙ to add your OpenAI API key.", "error");
           } else {
             setStatus(`Error: ${response.error}`, "error");
           }

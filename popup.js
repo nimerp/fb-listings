@@ -14,6 +14,6 @@ chrome.storage.sync.get("apiKey", ({ apiKey }) => {
   } else {
     statusRow.textContent = "⚠ No API key set. Open Settings to add your Anthropic key.";
     statusRow.className = "status-row no-key";
-    hintText.textContent = "An Anthropic API key is required to process listings.";
+    hintText.textContent = "An OpenAI API key is required to process listings.";
   }
 });
