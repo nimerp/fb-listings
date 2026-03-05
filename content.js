@@ -6,6 +6,227 @@
   const CACHE_PREFIX = "fb_listings_";
   const SIDEBAR_ID = "fb-listings-root";
 
+  // ─── Styles (inlined so Shadow DOM is fully isolated from Facebook's CSS) ─────
+  const STYLES = `
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :host {
+      all: initial;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 13px;
+      color: #1c1e21;
+    }
+
+    #fbl-sidebar {
+      position: fixed;
+      top: 60px;
+      right: 0;
+      z-index: 2147483647;
+      width: 340px;
+      max-height: calc(100vh - 70px);
+      display: flex;
+      flex-direction: column;
+      background: #ffffff;
+      border-left: 1px solid #dddfe2;
+      border-bottom: 1px solid #dddfe2;
+      border-radius: 0 0 0 8px;
+      box-shadow: -4px 4px 16px rgba(0,0,0,0.12);
+      overflow: hidden;
+      transition: width 0.2s ease;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 13px;
+      color: #1c1e21;
+    }
+
+    #fbl-sidebar.fbl-collapsed { width: 36px; }
+
+    /* Header */
+    #fbl-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background: #1877f2;
+      color: #fff;
+      flex-shrink: 0;
+      user-select: none;
+    }
+    #fbl-logo {
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    #fbl-header-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    #fbl-header-actions button {
+      all: unset;
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+      width: 26px;
+      height: 26px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+    #fbl-header-actions button:hover { background: rgba(255,255,255,0.35); }
+
+    /* Body */
+    #fbl-body { display: flex; flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
+
+    /* Action buttons */
+    #fbl-actions { padding: 10px 12px 6px; display: flex; gap: 8px; flex-shrink: 0; }
+    .fbl-primary-btn, .fbl-secondary-btn {
+      all: unset;
+      flex: 1;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: background 0.15s;
+      text-align: center;
+    }
+    .fbl-primary-btn { background: #1877f2; color: #fff; }
+    .fbl-primary-btn:hover:not(:disabled) { background: #166fe5; }
+    .fbl-secondary-btn { background: #e4e6eb; color: #1c1e21; }
+    .fbl-secondary-btn:hover:not(:disabled) { background: #d8dadf; }
+    .fbl-primary-btn:disabled, .fbl-secondary-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Search */
+    #fbl-search {
+      all: unset;
+      display: block;
+      margin: 4px 12px 6px;
+      padding: 7px 10px;
+      border: 1px solid #dddfe2;
+      border-radius: 20px;
+      font-size: 13px;
+      background: #f0f2f5;
+      color: #1c1e21;
+      flex-shrink: 0;
+      width: calc(100% - 24px);
+    }
+    #fbl-search:focus { border-color: #1877f2; background: #fff; outline: none; }
+
+    /* Tabs */
+    #fbl-tabs {
+      display: flex;
+      border-bottom: 2px solid #e4e6eb;
+      flex-shrink: 0;
+      padding: 0 12px;
+      gap: 4px;
+    }
+    .fbl-tab {
+      all: unset;
+      flex: 1;
+      padding: 8px 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      color: #65676b;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: color 0.15s, border-color 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .fbl-tab:hover { color: #1877f2; }
+    .fbl-tab.active { color: #1877f2; border-bottom-color: #1877f2; }
+    .fbl-count {
+      background: #e4e6eb;
+      color: #1c1e21;
+      border-radius: 10px;
+      padding: 1px 7px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .fbl-tab.active .fbl-count { background: #e7f0fd; color: #1877f2; }
+
+    /* Status */
+    .fbl-status {
+      margin: 6px 12px 2px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      display: none;
+      flex-shrink: 0;
+      line-height: 1.4;
+    }
+    .fbl-status-info    { background: #e7f0fd; color: #1877f2; display: block; }
+    .fbl-status-success { background: #e6f4ea; color: #1e7e34; display: block; }
+    .fbl-status-warn    { background: #fff3cd; color: #856404; display: block; }
+    .fbl-status-error   { background: #fdecea; color: #c0392b; display: block; }
+
+    /* Listings container */
+    #fbl-listings-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 12px 12px;
+      min-height: 0;
+    }
+    #fbl-listings-container::-webkit-scrollbar { width: 5px; }
+    #fbl-listings-container::-webkit-scrollbar-track { background: transparent; }
+    #fbl-listings-container::-webkit-scrollbar-thumb { background: #bec3c9; border-radius: 3px; }
+
+    /* Empty state */
+    .fbl-empty-state {
+      text-align: center;
+      color: #65676b;
+      padding: 32px 16px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* Cards */
+    .fbl-card {
+      background: #f0f2f5;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+      border: 1px solid #e4e6eb;
+      transition: box-shadow 0.15s;
+    }
+    .fbl-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .fbl-card-header { margin-bottom: 5px; }
+    .fbl-listing-type {
+      display: inline-block;
+      background: #e7f0fd;
+      color: #1877f2;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+    .fbl-card-title { font-weight: 700; font-size: 14px; color: #1c1e21; margin-bottom: 7px; line-height: 1.3; }
+    .fbl-fields { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+    .fbl-field {
+      background: #fff;
+      border: 1px solid #dddfe2;
+      border-radius: 4px;
+      padding: 2px 7px;
+      font-size: 11px;
+      color: #65676b;
+      white-space: nowrap;
+    }
+    .fbl-field-key { font-weight: 600; color: #444950; }
+    .fbl-card-desc { font-size: 12px; color: #444950; line-height: 1.45; margin-bottom: 8px; }
+    .fbl-card-link { display: inline-block; font-size: 12px; color: #1877f2; text-decoration: none; font-weight: 600; }
+    .fbl-card-link:hover { text-decoration: underline; }
+  `;
+
   // ─── Cache helpers ────────────────────────────────────────────────────────────
   function cacheKey() {
     return CACHE_PREFIX + normalizeGroupUrl(location.href);
@@ -14,7 +235,6 @@
   function normalizeGroupUrl(url) {
     try {
       const u = new URL(url);
-      // Keep only the group path portion, drop trailing slash & query
       return u.pathname.replace(/\/$/, "");
     } catch {
       return url;
@@ -42,23 +262,17 @@
 
   // ─── DOM Extraction ───────────────────────────────────────────────────────────
   function extractGroupMeta() {
-    // Group title – try multiple selectors Facebook uses
     const titleSelectors = [
       'h1[data-testid="group-name"]',
-      'h1.x1heor9g',
       '[data-pagelet="GroupFeed"] h1',
       'h1',
     ];
     let title = "";
     for (const sel of titleSelectors) {
       const el = document.querySelector(sel);
-      if (el && el.innerText.trim()) {
-        title = el.innerText.trim();
-        break;
-      }
+      if (el && el.innerText.trim()) { title = el.innerText.trim(); break; }
     }
 
-    // Group description – look in "About" section or meta tag
     let description = "";
     const metaDesc = document.querySelector('meta[name="description"]');
     if (metaDesc) description = metaDesc.getAttribute("content") || "";
@@ -69,10 +283,7 @@
     ];
     for (const sel of aboutSelectors) {
       const el = document.querySelector(sel);
-      if (el && el.innerText.trim()) {
-        description = el.innerText.trim();
-        break;
-      }
+      if (el && el.innerText.trim()) { description = el.innerText.trim(); break; }
     }
 
     return { title: title || document.title, description };
@@ -81,24 +292,17 @@
   function extractPosts() {
     const posts = [];
     const seen = new Set();
-
-    // Facebook renders feed posts as role="article"
     const articles = document.querySelectorAll('[role="article"]');
 
     articles.forEach((article) => {
-      // Skip nested articles (e.g. comments)
       if (article.closest('[role="article"] [role="article"]')) return;
-
       const text = extractPostText(article);
       if (!text || text.length < 20) return;
-
       const link = extractPostLink(article);
       const author = extractAuthorName(article);
       const key = text.slice(0, 100);
-
       if (seen.has(key)) return;
       seen.add(key);
-
       posts.push({ text, link, author });
     });
 
@@ -106,62 +310,57 @@
   }
 
   function extractPostText(article) {
-    // Remove UI chrome: buttons, aria-hidden spans, etc.
     const clone = article.cloneNode(true);
-
-    // Remove elements we don't want
-    const noise = clone.querySelectorAll(
+    clone.querySelectorAll(
       "button, [role='button'], [aria-hidden='true'], svg, [data-visualcompletion='ignore']"
-    );
-    noise.forEach((n) => n.remove());
-
+    ).forEach((n) => n.remove());
     return (clone.innerText || clone.textContent || "").trim().slice(0, 2000);
   }
 
   function extractPostLink(article) {
-    // Timestamp links in FB posts point to the individual post
     const timeLinks = article.querySelectorAll("a[href*='/posts/'], a[href*='?story_fbid='], a[href*='/permalink/']");
     for (const a of timeLinks) {
       const href = a.getAttribute("href");
       if (href) return absoluteUrl(href);
     }
-
-    // Fallback: any anchor with a timestamp child
-    const allLinks = article.querySelectorAll("a[href]");
-    for (const a of allLinks) {
+    for (const a of article.querySelectorAll("a[href]")) {
       const href = a.getAttribute("href");
       if (href && (href.includes("/posts/") || href.includes("story_fbid") || href.includes("/permalink/"))) {
         return absoluteUrl(href);
       }
     }
-
     return location.href;
   }
 
   function extractAuthorName(article) {
     const strongEl = article.querySelector("h2 strong, h3 strong, [data-testid='story-subtitle'] strong");
     if (strongEl) return strongEl.innerText.trim();
-
     const firstStrong = article.querySelector("strong");
     if (firstStrong) return firstStrong.innerText.trim();
-
     return "Unknown";
   }
 
   function absoluteUrl(href) {
-    try {
-      return new URL(href, location.origin).href;
-    } catch {
-      return href;
-    }
+    try { return new URL(href, location.origin).href; }
+    catch { return href; }
   }
 
-  // ─── Sidebar HTML ─────────────────────────────────────────────────────────────
-  function createSidebar() {
-    const root = document.createElement("div");
-    root.id = SIDEBAR_ID;
+  // ─── Shadow DOM setup ─────────────────────────────────────────────────────────
+  let shadow; // module-level ref so all helpers can query within it
 
-    root.innerHTML = `
+  function $(id) { return shadow.getElementById(id); }
+  function $$(sel) { return shadow.querySelectorAll(sel); }
+
+  function createSidebar() {
+    const host = document.createElement("div");
+    host.id = SIDEBAR_ID;
+    shadow = host.attachShadow({ mode: "open" });
+
+    const style = document.createElement("style");
+    style.textContent = STYLES;
+
+    const container = document.createElement("div");
+    container.innerHTML = `
       <div id="fbl-sidebar">
         <div id="fbl-header">
           <span id="fbl-logo">&#9776; Listings</span>
@@ -184,7 +383,7 @@
             <button class="fbl-tab" data-tab="requests">Requests <span class="fbl-count" id="fbl-requests-count">0</span></button>
           </div>
 
-          <div id="fbl-status"></div>
+          <div id="fbl-status" class="fbl-status"></div>
 
           <div id="fbl-listings-container">
             <div id="fbl-offers-panel" class="fbl-panel">
@@ -198,7 +397,9 @@
       </div>
     `;
 
-    return root;
+    shadow.appendChild(style);
+    shadow.appendChild(container);
+    return host;
   }
 
   // ─── Render helpers ───────────────────────────────────────────────────────────
@@ -206,32 +407,28 @@
     const offers = listings.filter((l) => l.type === "offer");
     const requests = listings.filter((l) => l.type === "request");
 
-    document.getElementById("fbl-offers-count").textContent = offers.length;
-    document.getElementById("fbl-requests-count").textContent = requests.length;
+    $("fbl-offers-count").textContent = offers.length;
+    $("fbl-requests-count").textContent = requests.length;
 
     renderPanel("fbl-offers-panel", offers);
     renderPanel("fbl-requests-panel", requests);
 
-    document.getElementById("fbl-refresh-btn").style.display = "inline-flex";
-    document.getElementById("fbl-generate-btn").style.display = "none";
+    $("fbl-refresh-btn").style.display = "inline-flex";
+    $("fbl-generate-btn").style.display = "none";
   }
 
   function renderPanel(panelId, listings) {
-    const panel = document.getElementById(panelId);
-    if (listings.length === 0) {
-      panel.innerHTML = '<div class="fbl-empty-state">No listings found.</div>';
-      return;
-    }
-    panel.innerHTML = listings.map(renderCard).join("");
+    const panel = $(panelId);
+    panel.innerHTML = listings.length === 0
+      ? '<div class="fbl-empty-state">No listings found.</div>'
+      : listings.map(renderCard).join("");
   }
 
   function renderCard(listing) {
     const fieldsHtml = Object.entries(listing.fields || {})
-      .map(
-        ([k, v]) =>
-          `<span class="fbl-field"><span class="fbl-field-key">${escHtml(formatKey(k))}:</span> ${escHtml(String(v))}</span>`
-      )
-      .join("");
+      .map(([k, v]) =>
+        `<span class="fbl-field"><span class="fbl-field-key">${escHtml(formatKey(k))}:</span> ${escHtml(String(v))}</span>`
+      ).join("");
 
     return `
       <div class="fbl-card" data-search="${escAttr(searchableText(listing))}">
@@ -247,14 +444,8 @@
   }
 
   function searchableText(listing) {
-    return [
-      listing.title,
-      listing.listing_type,
-      listing.description,
-      ...Object.values(listing.fields || {}),
-    ]
-      .join(" ")
-      .toLowerCase();
+    return [listing.title, listing.listing_type, listing.description, ...Object.values(listing.fields || {})]
+      .join(" ").toLowerCase();
   }
 
   function formatKey(k) {
@@ -263,43 +454,36 @@
 
   function escHtml(str) {
     return String(str)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
 
-  function escAttr(str) {
-    return String(str).replace(/"/g, "&quot;");
-  }
+  function escAttr(str) { return String(str).replace(/"/g, "&quot;"); }
 
   function setStatus(msg, type = "info") {
-    const el = document.getElementById("fbl-status");
+    const el = $("fbl-status");
     if (!el) return;
     el.textContent = msg;
-    el.className = `fbl-status fbl-status-${type}`;
-    el.style.display = msg ? "block" : "none";
+    el.className = `fbl-status${type ? " fbl-status-" + type : ""}`;
   }
 
   // ─── Search ───────────────────────────────────────────────────────────────────
   function applySearch(query) {
     const q = query.toLowerCase().trim();
-    document.querySelectorAll(".fbl-card").forEach((card) => {
-      const text = card.dataset.search || "";
-      card.style.display = !q || text.includes(q) ? "" : "none";
+    $$(".fbl-card").forEach((card) => {
+      card.style.display = !q || (card.dataset.search || "").includes(q) ? "" : "none";
     });
   }
 
   // ─── Tab switching ────────────────────────────────────────────────────────────
   function initTabs() {
-    document.querySelectorAll(".fbl-tab").forEach((tab) => {
+    $$(".fbl-tab").forEach((tab) => {
       tab.addEventListener("click", () => {
-        document.querySelectorAll(".fbl-tab").forEach((t) => t.classList.remove("active"));
+        $$(".fbl-tab").forEach((t) => t.classList.remove("active"));
         tab.classList.add("active");
         const target = tab.dataset.tab;
-        document.getElementById("fbl-offers-panel").style.display = target === "offers" ? "" : "none";
-        document.getElementById("fbl-requests-panel").style.display = target === "requests" ? "" : "none";
+        $("fbl-offers-panel").style.display = target === "offers" ? "" : "none";
+        $("fbl-requests-panel").style.display = target === "requests" ? "" : "none";
       });
     });
   }
@@ -317,24 +501,21 @@
 
     const posts = extractPosts();
     if (posts.length === 0) {
-      setStatus("No posts found on this page. Try scrolling down to load more.", "warn");
+      setStatus("No posts found. Try scrolling down to load more.", "warn");
       return;
     }
 
     const { title: groupTitle, description: groupDescription } = extractGroupMeta();
     setStatus(`Processing ${posts.length} posts…`, "info");
 
-    document.getElementById("fbl-generate-btn").disabled = true;
-    document.getElementById("fbl-refresh-btn").disabled = true;
+    $("fbl-generate-btn").disabled = true;
+    $("fbl-refresh-btn").disabled = true;
 
     chrome.runtime.sendMessage(
-      {
-        type: "PROCESS_POSTS",
-        payload: { groupTitle, groupDescription, posts },
-      },
+      { type: "PROCESS_POSTS", payload: { groupTitle, groupDescription, posts } },
       (response) => {
-        document.getElementById("fbl-generate-btn").disabled = false;
-        document.getElementById("fbl-refresh-btn").disabled = false;
+        $("fbl-generate-btn").disabled = false;
+        $("fbl-refresh-btn").disabled = false;
 
         if (chrome.runtime.lastError || !response) {
           setStatus("Extension error. Please reload the page.", "error");
@@ -358,57 +539,54 @@
     );
   }
 
-  // ─── Sidebar collapse/expand ──────────────────────────────────────────────────
+  // ─── Collapse/expand ──────────────────────────────────────────────────────────
   function initToggle() {
-    const btn = document.getElementById("fbl-toggle-btn");
-    const body = document.getElementById("fbl-body");
+    const btn = $("fbl-toggle-btn");
+    const body = $("fbl-body");
+    const sidebar = $("fbl-sidebar");
     let collapsed = false;
 
     btn.addEventListener("click", () => {
       collapsed = !collapsed;
       body.style.display = collapsed ? "none" : "";
       btn.textContent = collapsed ? "›" : "‹";
-      document.getElementById("fbl-sidebar").classList.toggle("fbl-collapsed", collapsed);
+      sidebar.classList.toggle("fbl-collapsed", collapsed);
     });
   }
 
   // ─── Init ─────────────────────────────────────────────────────────────────────
   function init() {
-    const root = createSidebar();
-    document.body.appendChild(root);
+    const host = createSidebar();
+    document.body.appendChild(host);
 
     initTabs();
     initToggle();
 
-    // Settings button → open options page
-    document.getElementById("fbl-settings-btn").addEventListener("click", () => {
+    $("fbl-settings-btn").addEventListener("click", () => {
       chrome.runtime.sendMessage({ type: "OPEN_OPTIONS" });
     });
 
-    // Generate button
-    document.getElementById("fbl-generate-btn").addEventListener("click", () => {
+    $("fbl-generate-btn").addEventListener("click", () => {
       generateListings(false);
     });
 
-    // Refresh button
-    document.getElementById("fbl-refresh-btn").addEventListener("click", () => {
+    $("fbl-refresh-btn").addEventListener("click", () => {
       clearCache();
       setStatus("", "");
-      document.getElementById("fbl-refresh-btn").style.display = "none";
-      document.getElementById("fbl-generate-btn").style.display = "inline-flex";
-      document.getElementById("fbl-offers-panel").innerHTML = '<div class="fbl-empty-state">Click "Generate Listings" to get started.</div>';
-      document.getElementById("fbl-requests-panel").innerHTML = '<div class="fbl-empty-state">Click "Generate Listings" to get started.</div>';
-      document.getElementById("fbl-offers-count").textContent = "0";
-      document.getElementById("fbl-requests-count").textContent = "0";
+      $("fbl-refresh-btn").style.display = "none";
+      $("fbl-generate-btn").style.display = "inline-flex";
+      $("fbl-offers-panel").innerHTML = '<div class="fbl-empty-state">Click "Generate Listings" to get started.</div>';
+      $("fbl-requests-panel").innerHTML = '<div class="fbl-empty-state">Click "Generate Listings" to get started.</div>';
+      $("fbl-offers-count").textContent = "0";
+      $("fbl-requests-count").textContent = "0";
       generateListings(true);
     });
 
-    // Search
-    document.getElementById("fbl-search").addEventListener("input", (e) => {
+    $("fbl-search").addEventListener("input", (e) => {
       applySearch(e.target.value);
     });
 
-    // Auto-load from cache if available
+    // Auto-load from cache
     const cached = loadCache();
     if (cached) {
       renderListings(cached);
@@ -416,7 +594,6 @@
     }
   }
 
-  // Wait for Facebook's main content to render
   if (document.readyState === "complete") {
     init();
   } else {
