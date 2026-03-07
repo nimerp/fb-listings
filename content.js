@@ -42,21 +42,55 @@
     return { title: title || document.title, description };
   }
 
-  function extractPosts() {
+  // Wait for at least one post article to appear (polls up to ~5s)
+  function waitForPosts(timeout = 5000, interval = 300) {
+    return new Promise((resolve) => {
+      const deadline = Date.now() + timeout;
+      const check = () => {
+        const found = findArticles();
+        if (found.length > 0) return resolve(found);
+        if (Date.now() >= deadline) return resolve([]);
+        setTimeout(check, interval);
+      };
+      check();
+    });
+  }
+
+  // Try multiple selector strategies to find post containers
+  function findArticles() {
+    // Strategy 1: standard role=article, top-level only
+    const byRole = Array.from(document.querySelectorAll('[role="article"]'))
+      .filter((el) => !el.closest('[role="article"] [role="article"]'));
+    if (byRole.length > 0) return byRole;
+
+    // Strategy 2: Facebook feed units (data-pagelet)
+    const byPagelet = Array.from(document.querySelectorAll('[data-pagelet^="FeedUnit"]'));
+    if (byPagelet.length > 0) return byPagelet;
+
+    // Strategy 3: aria-posinset items (virtualized feed)
+    const byPosinset = Array.from(document.querySelectorAll('[aria-posinset]'));
+    if (byPosinset.length > 0) return byPosinset;
+
+    return [];
+  }
+
+  function articleToText(article) {
+    const clone = article.cloneNode(true);
+    clone.querySelectorAll("button,[role='button'],[aria-hidden='true'],svg,[data-visualcompletion='ignore'],script,style")
+      .forEach((n) => n.remove());
+    return (clone.innerText || clone.textContent || "").replace(/\s+/g, " ").trim().slice(0, 2000);
+  }
+
+  async function extractPosts() {
+    const articles = await waitForPosts();
     const posts = [];
     const seen = new Set();
 
-    document.querySelectorAll('[role="article"]').forEach((article) => {
-      if (article.closest('[role="article"] [role="article"]')) return;
-
-      const clone = article.cloneNode(true);
-      clone.querySelectorAll("button,[role='button'],[aria-hidden='true'],svg,[data-visualcompletion='ignore']")
-        .forEach((n) => n.remove());
-      const text = (clone.innerText || clone.textContent || "").trim().slice(0, 2000);
-
-      if (!text || text.length < 20) return;
+    for (const article of articles) {
+      const text = articleToText(article);
+      if (!text || text.length < 20) continue;
       const key = text.slice(0, 100);
-      if (seen.has(key)) return;
+      if (seen.has(key)) continue;
       seen.add(key);
 
       // Find post permalink
@@ -73,7 +107,7 @@
       const author = strongEl?.innerText?.trim() || "Unknown";
 
       posts.push({ text, link, author });
-    });
+    }
 
     return posts;
   }
@@ -105,9 +139,14 @@
     if (type === "FBL_GENERATE" || type === "FBL_REFRESH") {
       if (type === "FBL_REFRESH") clearCache();
 
-      const posts = extractPosts();
+      toSidebar({ type: "FBL_STATUS", msg: "Detecting posts…", level: "info" });
+      const posts = await extractPosts();
       if (posts.length === 0) {
-        toSidebar({ type: "FBL_STATUS", msg: "No posts found. Scroll down to load more.", level: "warn" });
+        const articleCount = document.querySelectorAll('[role="article"]').length;
+        const hint = articleCount > 0
+          ? `Found ${articleCount} article elements but couldn't extract text. Try scrolling to load posts first.`
+          : "No posts detected. Make sure you're on a Facebook Group feed page and posts are visible.";
+        toSidebar({ type: "FBL_STATUS", msg: hint, level: "warn" });
         return;
       }
 
